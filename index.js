@@ -113,6 +113,13 @@ app.get('/test', async (req, res) => {
 // Comandi bot Telegram
 bot.on('message', (msg) => {
     const chatId = msg.chat.id;
+    // NUOVO: Mostra sempre l'ID
+    console.log(`📱 Messaggio ricevuto da: ${msg.from.first_name} - ID: ${chatId}`);
+    
+    // Rispondi sempre con l'ID
+    if (msg.text && msg.text !== '/start' && msg.text !== '/info' && msg.text !== '/test') {
+        bot.sendMessage(chatId, `🎯 Il tuo ID Telegram è: <b>${chatId}</b>`, { parse_mode: 'HTML' });
+    }
     
     if (msg.text === '/start' || msg.text === '/info') {
         bot.sendMessage(chatId, 
