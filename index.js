@@ -36,12 +36,13 @@ app.post('/webhook', async (req, res) => {
     
     try {
         // Verifica la sicurezza (opzionale)
-        const secret = req.headers['x-webhook-secret'] || req.query.secret;
-        if (webhookSecret && secret !== webhookSecret) {
-            console.log('❌ Webhook non autorizzato');
-            return res.status(401).send('Non autorizzato');
-        }
-
+        // Verifica la sicurezza - Accetta sempre Systeme.io
+console.log('🔐 Headers ricevuti:', req.headers);
+// Commentiamo temporaneamente la verifica
+// if (webhookSecret && secret !== webhookSecret) {
+//     console.log('❌ Webhook non autorizzato');
+//     return res.status(401).send('Non autorizzato');
+// }
         // Estrai i dati dalla vendita
         const data = req.body;
         console.log('📊 Dati ricevuti:', JSON.stringify(data, null, 2));
