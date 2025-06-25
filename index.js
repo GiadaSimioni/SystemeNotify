@@ -79,7 +79,11 @@ app.post('/webhook', async (req, res) => {
             prodotto: nomeProdotto
         });
 
-        res.status(200).json({ status: 'ok' });
+        // Rispondi sempre con 200 OK in formato JSON
+res.status(200).json({ 
+    success: true,
+    message: 'Webhook received successfully'
+});
     } catch (error) {
         console.error('❌ Errore nel webhook:', error);
         res.status(200).send('OK');
