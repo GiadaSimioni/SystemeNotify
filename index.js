@@ -1,5 +1,5 @@
-// SYSTEMENOTIFY - DEBUG VERSION 🔍
-console.log('🚀 SystemeNotify DEBUG sta partendo...');
+// SYSTEMENOTIFY - VERSIONE FINALE 🚀
+console.log('🚀 SystemeNotify sta partendo...');
 
 require('dotenv').config();
 const express = require('express');
@@ -12,96 +12,132 @@ const chatIds = process.env.TELEGRAM_CHAT_IDS.split(',').map(id => id.trim());
 
 const bot = new TelegramBot(botToken);
 
-// Middleware per leggere il body in diversi formati
+// Configuriamo Express
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(express.text());
-app.use(express.raw());
 
 // Pagina principale
 app.get('/', (req, res) => {
     res.send(`
-        <h1>🎉 SystemeNotify DEBUG è ATTIVO!</h1>
-        <p>Versione: 2.0.0 DEBUG</p>
+        <h1>🎉 SystemeNotify è ATTIVO!</h1>
+        <p>Il bot sta funzionando correttamente.</p>
+        <p>Versione: 3.0.0 FINALE</p>
         <p>Status: ✅ Online</p>
     `);
 });
 
-// Webhook - accetta TUTTO per debug
-app.all('/webhook', async (req, res) => {
-    console.log('📨 WEBHOOK RICEVUTO!');
-    console.log('📋 Metodo:', req.method);
-    console.log('📋 Headers:', JSON.stringify(req.headers, null, 2));
-    console.log('📋 Query:', JSON.stringify(req.query, null, 2));
-    console.log('📋 Body:', JSON.stringify(req.body, null, 2));
-    console.log('📋 Body type:', typeof req.body);
+// Webhook per Systeme.io
+app.post('/webhook', async (req, res) => {
+    console.log('📨 Ricevuto webhook da Systeme.io!');
     
     try {
-        // Prova a estrarre i dati in vari modi
-        let data = req.body;
+        const data = req.body;
         
-        // Se il body è una stringa, prova a parsarlo
-        if (typeof data === 'string') {
-            try {
-                data = JSON.parse(data);
-                console.log('✅ Body parsato come JSON');
-            } catch (e) {
-                console.log('❌ Body non è JSON valido');
-            }
+        // Estrai i dati dalla struttura di Systeme.io
+        const cliente = data.customer?.fields?.first_name + ' ' + data.customer?.fields?.surname || 'Cliente';
+        const email = data.customer?.email || 'N/D';
+        const telefono = data.customer?.fields?.phone_number || 'N/D';
+        const prezzo = Math.round((data.order?.totalPrice || 0) / 100);
+        const dataVendita = new Date(data.order?.createdAt || Date.now()).toLocaleString('it-IT');
+        
+        // Prova a trovare il nome del prodotto
+        let nomeProdotto = 'Prodotto';
+        if (data.orderItem?.name) {
+            nomeProdotto = data.orderItem.name;
+        } else if (data.orderItem?.resources?.[0]?.name) {
+            nomeProdotto = data.orderItem.resources[0].name;
+        } else if (data.funnelStep?.funnel?.name) {
+            nomeProdotto = data.funnelStep.funnel.name;
         }
         
-        // Invia sempre un messaggio di debug
-        const debugMessage = `🔍 <b>DEBUG WEBHOOK SYSTEME.IO</b>
+        // Crea il messaggio
+        const messaggio = `🎉 <b>NUOVA VENDITA!</b> 🤑
 
-📋 <b>Metodo:</b> ${req.method}
-📋 <b>Headers:</b> ${Object.keys(req.headers).join(', ')}
-📋 <b>Tipo Body:</b> ${typeof req.body}
-📋 <b>Body:</b> <code>${JSON.stringify(req.body, null, 2).substring(0, 1000)}</code>
+📚 <b>Corso:</b> ${nomeProdotto}
+💰 <b>Prezzo:</b> €${prezzo}
+👤 <b>Cliente:</b> ${cliente}
+📧 <b>Email:</b> ${email}
+📅 <b>Data:</b> ${dataVendita}
 
-<i>Controlla i log di Render per dettagli completi!</i>`;
+<i>Powered by SystemeNotify 🤖</i>`;
 
-        // Invia a tutti
+        // Invia a tutti i destinatari
         for (const chatId of chatIds) {
             try {
-                await bot.sendMessage(chatId, debugMessage, { parse_mode: 'HTML' });
-                console.log(`✅ Debug inviato a ${chatId}`);
+                await bot.sendMessage(chatId, messaggio, { parse_mode: 'HTML' });
+                console.log(`✅ Notifica inviata a ${chatId}`);
             } catch (error) {
                 console.error(`❌ Errore invio a ${chatId}:`, error.message);
             }
         }
 
-        // Rispondi sempre OK
-        res.status(200).json({ status: 'ok', message: 'Webhook ricevuto' });
-        
+        // Log per debug
+        console.log('📊 Vendita processata:', {
+            cliente,
+            email,
+            prezzo,
+            prodotto: nomeProdotto
+        });
+
+        res.status(200).json({ status: 'ok' });
     } catch (error) {
-        console.error('❌ Errore generale:', error);
-        res.status(200).send('OK'); // Rispondi OK comunque
+        console.error('❌ Errore nel webhook:', error);
+        res.status(200).send('OK');
     }
 });
 
 // Test endpoint
 app.get('/test', async (req, res) => {
-    const testMessage = `🧪 <b>TEST SYSTEMENOTIFY</b>
+    console.log('🧪 Test notifica richiesto');
+    
+    const messaggio = `🎉 <b>NUOVA VENDITA!</b> 🤑
 
-✅ Bot Telegram: Funzionante
-✅ Server: Online
-✅ Ora: ${new Date().toLocaleString('it-IT')}
+📚 <b>Corso:</b> Test Cristalloterapia
+💰 <b>Prezzo:</b> €97
+👤 <b>Cliente:</b> Mario Rossi
+📧 <b>Email:</b> test@example.com
+📅 <b>Data:</b> ${new Date().toLocaleString('it-IT')}
 
-<i>SystemeNotify v2.0.0 DEBUG</i>`;
+<i>Powered by SystemeNotify 🤖</i>`;
 
     try {
         for (const chatId of chatIds) {
-            await bot.sendMessage(chatId, testMessage, { parse_mode: 'HTML' });
+            await bot.sendMessage(chatId, messaggio, { parse_mode: 'HTML' });
         }
-        res.send('✅ Test inviato!');
+        res.send('✅ Messaggio di test inviato! Controlla Telegram.');
     } catch (error) {
         res.send('❌ Errore: ' + error.message);
     }
 });
 
+// Comandi bot Telegram
+bot.on('message', (msg) => {
+    const chatId = msg.chat.id;
+    
+    if (msg.text === '/start' || msg.text === '/info') {
+        bot.sendMessage(chatId, 
+            `🤖 <b>SystemeNotify Bot</b>\n\n` +
+            `Il tuo ID Telegram è: <code>${chatId}</code>\n\n` +
+            `Riceverai notifiche automatiche per ogni vendita!\n\n` +
+            `Comandi:\n` +
+            `/info - Mostra queste informazioni\n` +
+            `/test - Invia una notifica di test`,
+            { parse_mode: 'HTML' }
+        );
+    } else if (msg.text === '/test') {
+        const testMsg = `🧪 <b>TEST NOTIFICA</b>
+
+✅ Bot: Funzionante
+✅ ID: ${chatId}
+✅ Ora: ${new Date().toLocaleString('it-IT')}`;
+        
+        bot.sendMessage(chatId, testMsg, { parse_mode: 'HTML' });
+    }
+});
+
 // Avvia il server
 app.listen(port, () => {
-    console.log(`✅ SystemeNotify DEBUG attivo sulla porta ${port}`);
-    console.log(`📱 Bot Telegram configurato per: ${chatIds.join(', ')}`);
-    console.log(`🔍 MODALITÀ DEBUG ATTIVA`);
+    console.log(`✅ SystemeNotify attivo sulla porta ${port}`);
+    console.log(`📱 Bot configurato per: ${chatIds.join(', ')}`);
+    console.log(`🔗 Pronto per ricevere vendite!`);
 });
