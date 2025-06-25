@@ -25,7 +25,16 @@ app.get('/', (req, res) => {
         <p>Status: ✅ Online</p>
     `);
 });
-
+// Log TUTTI i webhook in arrivo
+app.all('/webhook', (req, res, next) => {
+    console.log('🚨 WEBHOOK RICEVUTO - Metodo:', req.method);
+    console.log('🚨 Headers:', req.headers);
+    if (req.method === 'POST') {
+        next();
+    } else {
+        res.status(200).send('OK');
+    }
+});
 // Webhook per Systeme.io
 app.post('/webhook', async (req, res) => {
     console.log('📨 Ricevuto webhook da Systeme.io!');
