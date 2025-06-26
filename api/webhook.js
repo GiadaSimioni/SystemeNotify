@@ -1,80 +1,120 @@
-// SYSTEMENOTIFY PER VERCEL 🚀
-const TelegramBot = require('node-telegram-bot-api');
+// SYSTEMENOTIFY VERSIONE SEMPLICE PER VERCEL 🚀
+// Niente dipendenze esterne!
 
-// Configurazione dalle variabili d'ambiente
-const botToken = process.env.TELEGRAM_BOT_TOKEN;
-const chatIds = process.env.TELEGRAM_CHAT_IDS.split(',').map(id => id.trim());
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+const CHAT_IDS = process.env.TELEGRAM_CHAT_IDS.split(',').map(id => id.trim());
 
-// Crea il bot (senza polling per Vercel)
-const bot = new TelegramBot(botToken);
+// Funzione per inviare messaggi a Telegram
+async function sendTelegramMessage(chatId, text) {
+    const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
+    
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                chat_id: chatId,
+                text: text,
+                parse_mode: 'HTML'
+            })
+        });
+        
+        const result = await response.json();
+        console.log(`✅ Messaggio inviato a ${chatId}:`, result.ok);
+        return result;
+    } catch (error) {
+        console.error(`❌ Errore invio a ${chatId}:`, error.message);
+        return null;
+    }
+}
 
 module.exports = async (req, res) => {
-    console.log('🔥 Richiesta ricevuta:', req.method, req.url);
+    console.log('🔥 Richiesta:', req.method, req.url);
     
-    // Gestione homepage
-    if (req.url === '/' && req.method === 'GET') {
+    // Homepage
+    if (req.method === 'GET' && req.url === '/') {
         return res.status(200).send(`
-            <h1>🎉 SystemeNotify è ATTIVO su Vercel!</h1>
-            <p>Versione: 4.0.0 VERCEL</p>
-            <p>Status: ✅ Online</p>
-            <p><a href="/test">Clicca qui per test notifica</a></p>
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>SystemeNotify</title>
+                <style>
+                    body { font-family: Arial; text-align: center; padding: 50px; }
+                    h1 { color: #2ecc71; }
+                    a { display: inline-block; margin: 20px; padding: 10px 20px; 
+                        background: #3498db; color: white; text-decoration: none; 
+                        border-radius: 5px; }
+                </style>
+            </head>
+            <body>
+                <h1>🎉 SystemeNotify è ATTIVO!</h1>
+                <p>Versione: 5.0 VERCEL SIMPLE</p>
+                <p>Status: ✅ Online</p>
+                <a href="/test">🧪 Test Notifica</a>
+            </body>
+            </html>
         `);
     }
     
-    // Gestione test
-    if (req.url === '/test' && req.method === 'GET') {
-        console.log('🧪 Test richiesto');
-        
-        const messaggio = `🎉 <b>NUOVA VENDITA!</b> 🤑
+    // Test
+    if (req.method === 'GET' && req.url === '/test') {
+        const testMessage = `🎉 <b>NUOVA VENDITA!</b> 🤑
 
-📚 <b>Corso:</b> Test Vercel
+📚 <b>Corso:</b> Test da Vercel
 💰 <b>Prezzo:</b> €97
 👤 <b>Cliente:</b> Test Cliente
 📧 <b>Email:</b> test@vercel.com
 📅 <b>Data:</b> ${new Date().toLocaleString('it-IT')}
 
-<i>Powered by SystemeNotify su Vercel 🚀</i>`;
+<i>SystemeNotify su Vercel ✨</i>`;
 
-        try {
-            // Invia a tutti
-            const promises = chatIds.map(chatId => 
-                bot.sendMessage(chatId, messaggio, { parse_mode: 'HTML' })
-                    .then(() => console.log(`✅ Test inviato a ${chatId}`))
-                    .catch(err => console.error(`❌ Errore invio a ${chatId}:`, err.message))
-            );
-            
-            await Promise.all(promises);
-            return res.status(200).send('✅ Notifica di test inviata! Controlla Telegram.');
-        } catch (error) {
-            console.error('❌ Errore test:', error);
-            return res.status(500).send('Errore: ' + error.message);
+        let successCount = 0;
+        for (const chatId of CHAT_IDS) {
+            const result = await sendTelegramMessage(chatId, testMessage);
+            if (result && result.ok) successCount++;
         }
+        
+        return res.status(200).send(`
+            <h2>✅ Test completato!</h2>
+            <p>Inviato a ${successCount}/${CHAT_IDS.length} destinatari</p>
+            <p><a href="/">Torna alla home</a></p>
+        `);
     }
     
-    // Gestione webhook da Systeme.io
-    if (req.url === '/webhook' && req.method === 'POST') {
-        console.log('📨 Webhook da Systeme.io ricevuto!');
+    // Webhook da Systeme.io
+    if (req.method === 'POST' && req.url === '/webhook') {
+        console.log('📨 Webhook ricevuto!');
         
         try {
             const data = req.body;
-            console.log('📊 Dati:', JSON.stringify(data).substring(0, 200));
+            console.log('📊 Tipo body:', typeof data);
             
-            // Estrai i dati
-            const cliente = data.customer?.fields?.first_name + ' ' + data.customer?.fields?.surname || 'Cliente';
-            const email = data.customer?.email || 'N/D';
-            const prezzoRaw = data.order?.totalPrice || data.order?.amount || 0;
-            const prezzo = prezzoRaw > 10 ? Math.round(prezzoRaw / 100) : prezzoRaw;
-            const dataVendita = new Date(data.order?.createdAt || Date.now()).toLocaleString('it-IT');
+            // Estrai dati
+            const nome = data.customer?.fields?.first_name || 'Nome';
+            const cognome = data.customer?.fields?.surname || 'Cognome';
+            const cliente = `${nome} ${cognome}`.trim();
+            const email = data.customer?.email || 'email@example.com';
+            
+            // Gestione prezzo
+            let prezzo = data.order?.totalPrice || 
+                        data.order?.amount || 
+                        data.pricePlan?.amount || 0;
+            
+            // Se il prezzo sembra essere in centesimi
+            if (prezzo > 100) {
+                prezzo = Math.round(prezzo / 100);
+            }
             
             // Nome prodotto
-            let nomeProdotto = 'Prodotto';
-            if (data.orderItem?.name) {
-                nomeProdotto = data.orderItem.name;
-            } else if (data.orderItem?.resources?.[0]?.name) {
-                nomeProdotto = data.orderItem.resources[0].name;
-            } else if (data.funnelStep?.funnel?.name) {
-                nomeProdotto = data.funnelStep.funnel.name;
-            }
+            const nomeProdotto = data.orderItem?.name || 
+                                data.pricePlan?.innerName ||
+                                data.funnelStep?.funnel?.name || 
+                                'Prodotto';
+            
+            // Data
+            const dataVendita = new Date().toLocaleString('it-IT');
             
             // Messaggio
             const messaggio = `🎉 <b>NUOVA VENDITA!</b> 🤑
@@ -88,27 +128,22 @@ module.exports = async (req, res) => {
 <i>Powered by SystemeNotify 🤖</i>`;
 
             // Invia a tutti
-            const promises = chatIds.map(chatId => 
-                bot.sendMessage(chatId, messaggio, { parse_mode: 'HTML' })
-                    .then(() => console.log(`✅ Notifica inviata a ${chatId}`))
-                    .catch(err => console.error(`❌ Errore invio a ${chatId}:`, err.message))
-            );
-            
+            const promises = CHAT_IDS.map(chatId => sendTelegramMessage(chatId, messaggio));
             await Promise.all(promises);
             
             // Risposta per Systeme.io
-            return res.status(200).json({ 
+            return res.status(200).json({
                 success: true,
-                message: 'Webhook received successfully'
+                message: 'Webhook processed successfully'
             });
             
         } catch (error) {
-            console.error('❌ Errore webhook:', error);
-            // Rispondi OK anche in caso di errore per non far disattivare il webhook
+            console.error('❌ Errore:', error);
+            // Rispondi OK comunque
             return res.status(200).json({ success: true });
         }
     }
     
-    // Richiesta non gestita
+    // 404
     return res.status(404).send('Not Found');
 };
