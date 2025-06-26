@@ -102,11 +102,10 @@ module.exports = async (req, res) => {
                         data.order?.amount || 
                         data.pricePlan?.amount || 0;
             
-            // Se il prezzo sembra essere in centesimi
-            if (prezzo > 100) {
-                prezzo = Math.round(prezzo / 100);
-            }
-            
+           // Systeme.io manda sempre il prezzo in centesimi
+// Dividiamo SEMPRE per 100
+prezzo = Math.round(prezzo / 100);
+
             // Nome prodotto
             const nomeProdotto = data.orderItem?.name || 
                                 data.pricePlan?.innerName ||
